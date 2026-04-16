@@ -1,0 +1,674 @@
+<!DOCTYPE html>
+<html lang="pt">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<title>Medidas Janelas</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  :root {
+    --ink: #1a1a1a;
+    --ink2: #555;
+    --line: #ccc;
+    --bg: #f5f4f0;
+    --card: #fff;
+    --accent: #2b4fff;
+    --danger: #cc2200;
+  }
+  body {
+    font-family: 'Courier New', monospace;
+    background: var(--bg);
+    color: var(--ink);
+    min-height: 100dvh;
+    padding: 0 0 6rem;
+  }
+  header {
+    background: var(--ink);
+    color: #fff;
+    padding: 1.25rem 1.25rem 1rem;
+    position: sticky;
+    top: 0;
+    z-index: 10;
+  }
+  header h1 {
+    font-size: 1rem;
+    font-weight: bold;
+    letter-spacing: 0.15em;
+    text-transform: uppercase;
+  }
+  header p {
+    font-size: 0.7rem;
+    color: #999;
+    letter-spacing: 0.1em;
+    margin-top: 2px;
+  }
+  .windows-list {
+    padding: 1rem;
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+  }
+  .window-card {
+    background: var(--card);
+    border: 1px solid var(--line);
+    border-radius: 0;
+    overflow: hidden;
+  }
+  .window-card-header {
+    background: var(--ink);
+    color: #fff;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0.6rem 1rem;
+    font-size: 0.75rem;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+  }
+  .window-card-header button {
+    background: none;
+    border: 1px solid #555;
+    color: #aaa;
+    font-family: inherit;
+    font-size: 0.65rem;
+    letter-spacing: 0.1em;
+    padding: 3px 8px;
+    cursor: pointer;
+    text-transform: uppercase;
+  }
+  .window-card-header button:hover { border-color: var(--danger); color: var(--danger); }
+  .photo-zone {
+    aspect-ratio: 4/3;
+    background: #e8e7e2;
+    border-bottom: 1px solid var(--line);
+    position: relative;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    overflow: hidden;
+  }
+  .photo-zone img {
+    width: 100%; height: 100%;
+    object-fit: cover;
+    display: block;
+  }
+  .photo-zone .photo-placeholder {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.5rem;
+    color: #888;
+    font-size: 0.75rem;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    pointer-events: none;
+  }
+  .photo-zone .photo-placeholder svg { opacity: 0.4; }
+  .photo-zone input[type=file] {
+    position: absolute; inset: 0;
+    opacity: 0; cursor: pointer;
+    width: 100%; height: 100%;
+  }
+  .photo-label {
+    position: absolute; top: 8px; left: 8px;
+    background: rgba(0,0,0,0.7);
+    color: #fff;
+    font-size: 0.6rem;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    padding: 3px 7px;
+    pointer-events: none;
+  }
+  .measurements {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    border-top: 1px solid var(--line);
+  }
+  .meas-block {
+    padding: 0.85rem 1rem;
+    border-right: 1px solid var(--line);
+  }
+  .meas-block:last-child { border-right: none; }
+  .meas-label {
+    font-size: 0.6rem;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--ink2);
+    margin-bottom: 0.75rem;
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+  }
+  .meas-label span {
+    display: inline-block;
+    width: 8px; height: 8px;
+    border: 1px solid currentColor;
+  }
+  .dim-row {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    margin-bottom: 0.5rem;
+    font-size: 0.75rem;
+  }
+  .dim-row label {
+    width: 14px;
+    color: var(--ink2);
+    flex-shrink: 0;
+    font-size: 0.7rem;
+    letter-spacing: 0.06em;
+  }
+  .dim-row input {
+    flex: 1;
+    border: none;
+    border-bottom: 1px solid var(--ink);
+    background: transparent;
+    font-family: inherit;
+    font-size: 0.85rem;
+    padding: 2px 0;
+    color: var(--ink);
+    text-align: right;
+    outline: none;
+    min-width: 0;
+  }
+  .dim-row input:focus { border-bottom-color: var(--accent); }
+  .dim-row .unit {
+    font-size: 0.65rem;
+    color: var(--ink2);
+    flex-shrink: 0;
+  }
+  .name-row {
+    padding: 0.7rem 1rem;
+    border-top: 1px solid var(--line);
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    font-size: 0.7rem;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--ink2);
+  }
+  .name-row input {
+    flex: 1;
+    border: none;
+    border-bottom: 1px solid var(--line);
+    background: transparent;
+    font-family: inherit;
+    font-size: 0.8rem;
+    padding: 2px 0;
+    color: var(--ink);
+    outline: none;
+    text-transform: none;
+    letter-spacing: 0;
+  }
+  .name-row input:focus { border-bottom-color: var(--accent); }
+  .bottom-bar {
+    position: fixed;
+    bottom: 0; left: 0; right: 0;
+    background: var(--card);
+    border-top: 1px solid var(--line);
+    padding: 0.75rem 1rem;
+    display: flex;
+    gap: 0.75rem;
+    z-index: 10;
+  }
+  .btn {
+    flex: 1;
+    padding: 0.85rem;
+    font-family: inherit;
+    font-size: 0.7rem;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    border: 1px solid var(--ink);
+    background: transparent;
+    cursor: pointer;
+    color: var(--ink);
+    transition: all 0.1s;
+  }
+  .btn:active { opacity: 0.7; }
+  .btn-primary {
+    background: var(--ink);
+    color: #fff;
+  }
+  .btn-primary:disabled { background: var(--line); border-color: var(--line); color: #999; cursor: not-allowed; }
+  .toast {
+    position: fixed;
+    top: 70px; left: 50%; transform: translateX(-50%);
+    background: var(--ink);
+    color: #fff;
+    font-size: 0.7rem;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    padding: 0.6rem 1.2rem;
+    z-index: 100;
+    opacity: 0;
+    transition: opacity 0.2s;
+    white-space: nowrap;
+  }
+  .toast.show { opacity: 1; }
+  .count-badge {
+    background: #fff;
+    color: var(--ink);
+    font-size: 0.65rem;
+    padding: 1px 6px;
+    border-radius: 20px;
+    margin-left: 0.4rem;
+  }
+  .empty-state {
+    text-align: center;
+    padding: 3rem 2rem;
+    color: #aaa;
+    font-size: 0.75rem;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    line-height: 2;
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>Medidas Janelas</h1>
+  <p>Levantamento de medidas — curtains</p>
+</header>
+
+<div class="windows-list" id="windowsList">
+  <div class="empty-state" id="emptyState">
+    Nenhuma janela adicionada<br>prima o botão abaixo
+  </div>
+</div>
+
+<div id="toast" class="toast"></div>
+
+<div class="bottom-bar">
+  <button class="btn" onclick="addWindow()">+ Janela</button>
+  <button class="btn btn-primary" id="exportBtn" onclick="exportPDF()" disabled>Gerar PDF</button>
+</div>
+
+<script>
+let windows = [];
+let windowCount = 0;
+
+function addWindow() {
+  windowCount++;
+  const id = Date.now();
+  const win = {
+    id,
+    name: `Janela ${windowCount}`,
+    photo: null,
+    janela: { largura: '', altura: '' },
+    fosso: { largura: '', altura: '', profundidade: '' }
+  };
+  windows.push(win);
+  renderWindow(win);
+  document.getElementById('emptyState').style.display = 'none';
+  document.getElementById('exportBtn').disabled = false;
+  setTimeout(() => {
+    document.getElementById(`card-${id}`).scrollIntoView({ behavior: 'smooth', block: 'start' });
+  }, 100);
+}
+
+function removeWindow(id) {
+  windows = windows.filter(w => w.id !== id);
+  document.getElementById(`card-${id}`).remove();
+  if (windows.length === 0) {
+    document.getElementById('emptyState').style.display = '';
+    document.getElementById('exportBtn').disabled = true;
+  }
+}
+
+function renderWindow(win) {
+  const list = document.getElementById('windowsList');
+  const card = document.createElement('div');
+  card.className = 'window-card';
+  card.id = `card-${win.id}`;
+  card.innerHTML = `
+    <div class="window-card-header">
+      <span id="header-name-${win.id}">${win.name}</span>
+      <button onclick="removeWindow(${win.id})">Remover</button>
+    </div>
+    <div class="photo-zone" id="photoZone-${win.id}">
+      <div class="photo-placeholder" id="photoPlaceholder-${win.id}">
+        <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+          <rect x="3" y="5" width="18" height="14" rx="1"/><circle cx="12" cy="12" r="3"/>
+          <path d="M3 9l4-4 4 4"/>
+        </svg>
+        <span>Toque para fotografar</span>
+      </div>
+      <img id="photoImg-${win.id}" style="display:none" />
+      <div class="photo-label">Foto</div>
+      <input type="file" accept="image/*" capture="environment"
+        onchange="handlePhoto(event, ${win.id})" />
+    </div>
+    <div class="measurements">
+      <div class="meas-block">
+        <div class="meas-label"><span></span> Janela (vão)</div>
+        <div class="dim-row">
+          <label>L</label>
+          <input type="number" inputmode="decimal" placeholder="0" step="0.5"
+            oninput="updateField(${win.id},'janela','largura',this.value)" />
+          <span class="unit">cm</span>
+        </div>
+        <div class="dim-row">
+          <label>A</label>
+          <input type="number" inputmode="decimal" placeholder="0" step="0.5"
+            oninput="updateField(${win.id},'janela','altura',this.value)" />
+          <span class="unit">cm</span>
+        </div>
+      </div>
+      <div class="meas-block">
+        <div class="meas-label"><span></span> Fosso (varões)</div>
+        <div class="dim-row">
+          <label>L</label>
+          <input type="number" inputmode="decimal" placeholder="0" step="0.5"
+            oninput="updateField(${win.id},'fosso','largura',this.value)" />
+          <span class="unit">cm</span>
+        </div>
+        <div class="dim-row">
+          <label>A</label>
+          <input type="number" inputmode="decimal" placeholder="0" step="0.5"
+            oninput="updateField(${win.id},'fosso','altura',this.value)" />
+          <span class="unit">cm</span>
+        </div>
+        <div class="dim-row">
+          <label>P</label>
+          <input type="number" inputmode="decimal" placeholder="0" step="0.5"
+            oninput="updateField(${win.id},'fosso','profundidade',this.value)" />
+          <span class="unit">cm</span>
+        </div>
+      </div>
+    </div>
+    <div class="name-row">
+      <span>Ref.</span>
+      <input type="text" value="${win.name}" placeholder="Nome / localização"
+        oninput="updateName(${win.id}, this.value)" />
+    </div>
+  `;
+  list.appendChild(card);
+}
+
+function handlePhoto(event, id) {
+  const file = event.target.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = (e) => {
+    const win = windows.find(w => w.id === id);
+    win.photo = e.target.result;
+    const img = document.getElementById(`photoImg-${id}`);
+    img.src = e.target.result;
+    img.style.display = 'block';
+    document.getElementById(`photoPlaceholder-${id}`).style.display = 'none';
+  };
+  reader.readAsDataURL(file);
+}
+
+function updateField(id, section, field, value) {
+  const win = windows.find(w => w.id === id);
+  win[section][field] = value;
+}
+
+function updateName(id, value) {
+  const win = windows.find(w => w.id === id);
+  win.name = value || `Janela`;
+  document.getElementById(`header-name-${id}`).textContent = win.name;
+}
+
+function showToast(msg) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  setTimeout(() => t.classList.remove('show'), 2500);
+}
+
+async function exportPDF() {
+  if (windows.length === 0) return;
+  showToast('A gerar PDF...');
+  const { jsPDF } = window.jspdf;
+  const pdf = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
+  const PW = 210, PH = 297;
+  const MARGIN = 12;
+
+  for (let i = 0; i < windows.length; i++) {
+    const win = windows[i];
+    if (i > 0) pdf.addPage();
+
+    // — Header bar —
+    pdf.setFillColor(26, 26, 26);
+    pdf.rect(0, 0, PW, 14, 'F');
+    pdf.setFont('courier', 'bold');
+    pdf.setFontSize(8);
+    pdf.setTextColor(255, 255, 255);
+    pdf.text(win.name.toUpperCase(), MARGIN, 9);
+    pdf.setFont('courier', 'normal');
+    pdf.setFontSize(7);
+    pdf.setTextColor(150, 150, 150);
+    pdf.text(`MIGUEL MIRANDA - 924292559 - MEDIDAS PARA CORTINADOS  —  ${new Date().toLocaleDateString('pt-PT')}`, PW - MARGIN, 9, { align: 'right' });
+
+    // — Photo —
+    const photoY = 18;
+    const photoH = 110;
+    const photoW = PW - MARGIN * 2;
+    if (win.photo) {
+      const ext = win.photo.startsWith('data:image/png') ? 'PNG' : 'JPEG';
+      pdf.addImage(win.photo, ext, MARGIN, photoY, photoW, photoH, undefined, 'MEDIUM');
+    } else {
+      pdf.setFillColor(232, 231, 226);
+      pdf.rect(MARGIN, photoY, photoW, photoH, 'F');
+      pdf.setFont('courier', 'normal');
+      pdf.setFontSize(9);
+      pdf.setTextColor(150);
+      pdf.text('SEM FOTOGRAFIA', PW / 2, photoY + photoH / 2, { align: 'center' });
+    }
+    // Photo border
+    pdf.setDrawColor(200);
+    pdf.setLineWidth(0.3);
+    pdf.rect(MARGIN, photoY, photoW, photoH);
+
+    // — Measurement sections —
+    const measY = photoY + photoH + 8;
+    const halfW = (PW - MARGIN * 2 - 4) / 2;
+
+    drawMeasBox(pdf, win, 'janela', MARGIN, measY, halfW, PH - measY - MARGIN);
+    drawMeasBox(pdf, win, 'fosso', MARGIN + halfW + 4, measY, halfW, PH - measY - MARGIN);
+  }
+
+  const filename = `janelas_${new Date().toISOString().slice(0,10)}.pdf`;
+  pdf.save(filename);
+  showToast('PDF guardado!');
+}
+
+function drawMeasBox(pdf, win, section, x, y, w, h) {
+  const INK = [26, 26, 26];
+  const GRAY = [120, 120, 120];
+  const LINE = [200, 200, 200];
+  const LIGHT = [245, 244, 240];
+  const isJanela = section === 'janela';
+  const label = isJanela ? 'JANELA (VÃO)' : 'FOSSO (VARÕES)';
+  const data = win[section];
+  const fields = isJanela
+    ? [{ v: data.largura, lbl: 'Largura' }, { v: data.altura, lbl: 'Altura' }]
+    : [{ v: data.largura, lbl: 'Largura' }, { v: data.altura, lbl: 'Altura' }, { v: data.profundidade, lbl: 'Profundidade' }];
+
+  // Box bg
+  pdf.setFillColor(...LIGHT);
+  pdf.rect(x, y, w, h, 'F');
+  pdf.setDrawColor(...LINE);
+  pdf.setLineWidth(0.3);
+  pdf.rect(x, y, w, h);
+
+  // Header strip
+  pdf.setFillColor(...INK);
+  pdf.rect(x, y, w, 8, 'F');
+  pdf.setFont('courier', 'bold');
+  pdf.setFontSize(6.5);
+  pdf.setTextColor(255, 255, 255);
+  pdf.text(label, x + 4, y + 5.5);
+
+  // Technical drawing area
+  const drawY = y + 12;
+  const drawH = 40;
+  const drawW = w - 8;
+  const drawX = x + 4;
+
+  // Draw window/fosso technical diagram
+  if (isJanela) {
+    drawWindowDiagram(pdf, drawX, drawY, drawW, drawH, data);
+  } else {
+    drawFossoDiagram(pdf, drawX, drawY, drawW, drawH, data);
+  }
+
+  // Measurements table
+  const tableY = drawY + drawH + 5;
+  pdf.setDrawColor(...LINE);
+  pdf.setLineWidth(0.2);
+  pdf.line(x + 4, tableY, x + w - 4, tableY);
+
+  fields.forEach((f, i) => {
+    const rowY = tableY + 6 + i * 7;
+    pdf.setFont('courier', 'normal');
+    pdf.setFontSize(6.5);
+    pdf.setTextColor(...GRAY);
+    pdf.text(f.lbl.toUpperCase(), x + 6, rowY);
+    const val = f.v ? `${f.v} cm` : '— cm';
+    pdf.setFont('courier', 'bold');
+    pdf.setFontSize(10);
+    pdf.setTextColor(...INK);
+    pdf.text(val, x + w - 6, rowY, { align: 'right' });
+    pdf.setDrawColor(...LINE);
+    pdf.setLineWidth(0.15);
+    pdf.line(x + 4, rowY + 2, x + w - 4, rowY + 2);
+  });
+}
+
+function drawWindowDiagram(pdf, x, y, w, h, data) {
+  const cx = x + w / 2, cy = y + h / 2;
+  const bw = Math.min(w * 0.7, 50), bh = Math.min(h * 0.75, 30);
+  const bx = cx - bw / 2, by = cy - bh / 2;
+  const INK = [26, 26, 26];
+  const GRAY = [140];
+
+  pdf.setDrawColor(...INK);
+  pdf.setLineWidth(0.8);
+  // Outer frame (wall opening)
+  pdf.rect(bx, by, bw, bh);
+  // Inner sash (window itself)
+  pdf.setLineWidth(0.4);
+  const inset = 3;
+  pdf.rect(bx + inset, by + inset, bw - inset * 2, bh - inset * 2);
+  // Cross divider
+  pdf.setLineWidth(0.25);
+  pdf.setDrawColor(160, 160, 160);
+  pdf.line(cx, by + inset, cx, by + bh - inset);
+  pdf.line(bx + inset, cy, bx + bw - inset, cy);
+
+  // Dimension arrows — width
+  const arrY = by - 5;
+  arrowLine(pdf, bx, arrY, bx + bw, arrY, INK);
+  if (data.largura) {
+    pdf.setFont('courier', 'bold');
+    pdf.setFontSize(6);
+    pdf.setTextColor(...INK);
+    pdf.text(`${data.largura}cm`, cx, arrY - 1.5, { align: 'center' });
+  }
+
+  // Dimension arrows — height
+  const arrX = bx - 5;
+  arrowLine(pdf, arrX, by, arrX, by + bh, INK, true);
+  if (data.altura) {
+    pdf.setFont('courier', 'bold');
+    pdf.setFontSize(6);
+    pdf.setTextColor(...INK);
+    pdf.text(`${data.altura}cm`, arrX - 1.5, cy, { align: 'right' });
+  }
+}
+
+function drawFossoDiagram(pdf, x, y, w, h, data) {
+  const INK = [26, 26, 26];
+  const GRAY3D = [160, 160, 160];
+  // Channel/recess shape: a 3D rectangular box seen from front-top angle
+  const bw = Math.min(w * 0.55, 38);
+  const bh = Math.min(h * 0.45, 18);
+  const bd = Math.min(bw * 0.35, 12); // depth offset
+  const cx = x + w / 2 + bd / 2;
+  const cy = y + h / 2 + bd / 2;
+  const bx = cx - bw / 2, by = cy - bh / 2;
+
+  // Front face
+  pdf.setDrawColor(...INK);
+  pdf.setLineWidth(0.7);
+  pdf.rect(bx, by, bw, bh);
+
+  // Top face
+  pdf.setLineWidth(0.3);
+  pdf.setDrawColor(...GRAY3D);
+  pdf.line(bx,      by,      bx - bd,      by - bd);
+  pdf.line(bx + bw, by,      bx + bw - bd, by - bd);
+  pdf.line(bx - bd, by - bd, bx + bw - bd, by - bd);
+
+  // Left face
+  pdf.line(bx,      by,      bx - bd, by - bd);
+  pdf.line(bx,      by + bh, bx - bd, by + bh - bd);
+  pdf.line(bx - bd, by - bd, bx - bd, by + bh - bd);
+
+  // Width arrow (bottom, horizontal)
+  const arrYw = by + bh + 5;
+  arrowLine(pdf, bx, arrYw, bx + bw, arrYw, INK);
+  if (data.largura) {
+    pdf.setFont('courier', 'bold'); pdf.setFontSize(6); pdf.setTextColor(...INK);
+    pdf.text(`${data.largura}cm`, bx + bw / 2, arrYw - 1.5, { align: 'center' });
+  }
+
+  // Height arrow (right side, vertical)
+  const arrXh = bx + bw + 5;
+  arrowLine(pdf, arrXh, by, arrXh, by + bh, INK, true);
+  if (data.altura) {
+    pdf.setFont('courier', 'bold'); pdf.setFontSize(6); pdf.setTextColor(...INK);
+    pdf.text(`${data.altura}cm`, arrXh + 2, by + bh / 2, { align: 'left' });
+  }
+
+  // Depth arrow (top-left diagonal label)
+  const dax1 = bx, day1 = by;
+  const dax2 = bx - bd, day2 = by - bd;
+  pdf.setDrawColor(...INK);
+  pdf.setLineWidth(0.25);
+  pdf.line(dax1, day1, dax2, day2);
+  const as = 1.5;
+  pdf.line(dax2, day2, dax2 + as * 1.2, day2);
+  pdf.line(dax2, day2, dax2, day2 + as * 1.2);
+  pdf.line(dax1, day1, dax1 - as * 1.2, day1);
+  pdf.line(dax1, day1, dax1, day1 + as * 1.2);
+  if (data.profundidade) {
+    pdf.setFont('courier', 'bold'); pdf.setFontSize(6); pdf.setTextColor(...INK);
+    pdf.text(`${data.profundidade}cm`, dax2 - 1, day2 - 2, { align: 'right' });
+  }
+}
+
+function arrowLine(pdf, x1, y1, x2, y2, color, vertical = false) {
+  pdf.setDrawColor(...color);
+  pdf.setLineWidth(0.25);
+  pdf.line(x1, y1, x2, y2);
+  const as = 1.5;
+  if (!vertical) {
+    // horizontal arrows
+    pdf.line(x1, y1, x1 + as, y1 - as);
+    pdf.line(x1, y1, x1 + as, y1 + as);
+    pdf.line(x2, y2, x2 - as, y2 - as);
+    pdf.line(x2, y2, x2 - as, y2 + as);
+    // tick marks
+    pdf.line(x1, y1 - 2, x1, y1 + 2);
+    pdf.line(x2, y2 - 2, x2, y2 + 2);
+  } else {
+    // vertical arrows
+    pdf.line(x1, y1, x1 - as, y1 + as);
+    pdf.line(x1, y1, x1 + as, y1 + as);
+    pdf.line(x2, y2, x2 - as, y2 - as);
+    pdf.line(x2, y2, x2 + as, y2 - as);
+    pdf.line(x1 - 2, y1, x1 + 2, y1);
+    pdf.line(x2 - 2, y2, x2 + 2, y2);
+  }
+}
+</script>
+</body>
+</html>
